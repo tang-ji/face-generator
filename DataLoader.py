@@ -17,8 +17,8 @@ class DataLoader():
             name = img_path.split('/')[-1]
             if name[-3:] != 'jpg' and name[-3:] != 'png':
                 continue
-            img_in = imread(self.input_path + name)
-            img_out = imread(self.output_path + name)
+            img_in = imread(self.input_path + name)[:,:,::-1]
+            img_out = imread(self.output_path + name)[:,:,::-1]
 
             img_in = resize(img_in, self.img_res)
             img_out = resize(img_out, self.img_res)
@@ -48,11 +48,11 @@ class DataLoader():
                 name = img.split('/')[-1]
                 if name[-3:] != 'jpg' and name[-3:] != 'png':
                     continue
-                img_in = imread(self.input_path)
-                img_out = imread(self.output_path)
+                img_in = imread(self.input_path + name)[:,:,::-1]
+                img_out = imread(self.output_path + name)[:,:,::-1]
 
-                img_in = imresize(img_in, self.img_res)
-                img_out = imresize(img_out, self.img_res)
+                img_in = resize(img_in, self.img_res)
+                img_out = resize(img_out, self.img_res)
 
                 # If training => do random flip
                 if not is_testing and np.random.random() < 0.5:
