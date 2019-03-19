@@ -6,10 +6,11 @@
 ### Getting Started
 
 # clone this repo
-git clone https://github.com/tangji08/face-generator/
+git clone https://github.com/tangji08/face-generator/ \
 cd face-generator
-# Put input sketches in folder "input/"
-# Put output images in folder "output/"
+
+Put input sketches in folder "input/" \
+Put output images in folder "output/"
 
 # train the pix2pix model 
 python train.py \
