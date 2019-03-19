@@ -1,20 +1,24 @@
 # face-generator
 
+Based on [pix2pix](https://phillipi.github.io/pix2pix/) by Isola et al.
+
+<img src="server/sample.gif" width="500px"/>
+<img src="server/sample2.gif" width="500px"/>
+
+##Setup
 ### Prerequisites
 - Keras 2.2.0
 
-### Getting Started
-
-# clone this repo
+### clone this repo
 git clone https://github.com/tangji08/face-generator/ \
 cd face-generator
 
-# prepare the dataset (Celeba)
+### prepare the dataset (Celeba)
 Put input sketches in folder "input/" \
 Put output images in folder "output/" \
 (if you want to train ICGAN, put label description in root path "label.txt")
 
-# train the pix2pix model 
+### train the pix2pix model 
 python train.py \
   --mode pix2pix \
   --input_dir input/ \
@@ -29,7 +33,7 @@ python train.py \
   --ndf 64 \
   --scale_size 256
   
-# train the ICGAN model 
+### train the ICGAN model 
 python train.py \
   --mode ICGAN \
   --input_dir input/ \
@@ -46,5 +50,4 @@ python train.py \
   --ndf 64 \
   --scale_size 256
   
-  <img src="server/sample.gif" width="600px"/>
-  <img src="server/sample2.gif" width="600px"/>
+
