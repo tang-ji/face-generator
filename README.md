@@ -46,4 +46,5 @@ python train.py \
   --ndf 64 \
   --scale_size 256
   
-  <img src="server/sample.gif" width="256px"/>
+  <img src="server/sample.gif" width="600px"/>
+  <img src="server/sample2.gif" width="600px"/>
