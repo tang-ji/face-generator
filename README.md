@@ -2,7 +2,7 @@
 
 Based on [pix2pix](https://phillipi.github.io/pix2pix/) by Isola et al.
 
-<img src="server/sample.gif" width="400px"/>      <img src="server/sample2.gif" width="400px"/>
+<img src="server/sample.gif" width="400px"/>                  <img src="server/sample2.gif" width="400px"/>
 
 ## Setup
 
@@ -20,6 +20,7 @@ Put output images in folder "output/" \
 (if you want to train ICGAN, put label description in root path "label.txt")
 
 ### train the pix2pix model 
+```sh
 python train.py \
   --mode pix2pix \
   --input_dir input/ \
@@ -33,8 +34,10 @@ python train.py \
   --ngf 64 \
   --ndf 64 \
   --scale_size 256
+```
   
 ### train the ICGAN model 
+```sh
 python train.py \
   --mode ICGAN \
   --input_dir input/ \
@@ -50,5 +53,5 @@ python train.py \
   --ngf 64 \
   --ndf 64 \
   --scale_size 256
-  
+```
 
