@@ -2,10 +2,11 @@
 
 Based on [pix2pix](https://phillipi.github.io/pix2pix/) by Isola et al.
 
-<img src="server/sample.gif" width="500px"/>
-<img src="server/sample2.gif" width="500px"/>
+<img src="server/sample.gif" width="400px"/><img src="server/sample2.gif" width="400px"/>
 
 ##Setup
+
+
 ### Prerequisites
 - Keras 2.2.0
 
