@@ -9,8 +9,10 @@
 git clone https://github.com/tangji08/face-generator/ \
 cd face-generator
 
+# prepare the dataset (Celeba)
 Put input sketches in folder "input/" \
-Put output images in folder "output/"
+Put output images in folder "output/" \
+(if you want to train ICGAN, put label description in root path "label.txt")
 
 # train the pix2pix model 
 python train.py \
