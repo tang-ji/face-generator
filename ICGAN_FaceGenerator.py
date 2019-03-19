@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 import scipy
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
+import tensorflow as tf
+from keras.layers import *
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
@@ -9,22 +9,23 @@ from keras.optimizers import Adam
 import datetime
 import matplotlib.pyplot as plt
 import sys
-from DataLoader import DataLoader
+from ICGAN_DataLoader import DataLoader
 import numpy as np
 import os
-import pickle as pk
 
-class FaceGenerator():
+class ICGAN():
     def __init__(self, arg):
         # Input shape
         self.img_rows = 256
         self.img_cols = 256
+        self.channels = 3
         if arg.scale_size is not None:
             self.img_rows = arg.scale_size
             self.img_cols = arg.scale_size
-        self.channels = 3
+        self.n_attributes = arg.attributes
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
-        self.data_loader = DataLoader(arg.input_dir, arg.output_dir, img_res=(self.img_rows, self.img_cols))
+        self.label_shape = (1,1,self.n_attributes)
+        self.data_loader = DataLoader('input/', 'output/', 'list_attr_celeba.txt', img_res=(self.img_rows, self.img_cols))
 
         # Calculate output shape of D (PatchGAN)
         patch = int(self.img_rows / 2**4)
@@ -43,21 +44,23 @@ class FaceGenerator():
 
         # Build the generator
         self.generator = self.build_generator()
+#         self.generator.compile(loss=g_loss, optimizer=optimizer, metrics=['accuracy'])
 
         # Input images and their conditioning images
         img_A = Input(shape=self.img_shape)
         img_B = Input(shape=self.img_shape)
+        label = Input(shape=self.label_shape)
 
         # By conditioning on B generate a fake version of A
-        fake_A = self.generator(img_B)
+        fake_A = self.generator([img_B, label])
 
         # For the combined model we will only train the generator
         self.discriminator.trainable = False
 
         # Discriminators determines validity of translated images / condition pairs
-        valid = self.discriminator([fake_A, img_B])
+        valid = self.discriminator([fake_A, label, img_B])
 
-        self.combined = Model(inputs=[img_A, img_B], outputs=[valid, fake_A])
+        self.combined = Model(inputs=[img_A, label, img_B], outputs=[valid, fake_A])
         self.combined.compile(loss=['mse', 'mae'],
                               loss_weights=[1, 100],
                               optimizer=optimizer)
@@ -85,6 +88,7 @@ class FaceGenerator():
 
         # Image input
         d0 = Input(shape=self.img_shape)
+        label = Input(shape=self.label_shape)
 
         # Downsampling
         d1 = conv2d(d0, self.gf, bn=False)
@@ -94,9 +98,13 @@ class FaceGenerator():
         d5 = conv2d(d4, self.gf*8)
         d6 = conv2d(d5, self.gf*8)
         d7 = conv2d(d6, self.gf*8)
+        d8 = conv2d(d7, self.gf*8)
+        
+        d8 = Concatenate(axis=-1)([d8, label])
 
         # Upsampling
-        u1 = deconv2d(d7, d6, self.gf*8)
+        u0 = deconv2d(d8, d7, self.gf*8)
+        u1 = deconv2d(u0, d6, self.gf*8)
         u2 = deconv2d(u1, d5, self.gf*8)
         u3 = deconv2d(u2, d4, self.gf*8)
         u4 = deconv2d(u3, d3, self.gf*4)
@@ -106,7 +114,7 @@ class FaceGenerator():
         u7 = UpSampling2D(size=2)(u6)
         output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u7)
 
-        return Model(d0, output_img)
+        return Model([d0, label], output_img)
 
     def build_discriminator(self):
 
@@ -120,18 +128,23 @@ class FaceGenerator():
 
         img_A = Input(shape=self.img_shape)
         img_B = Input(shape=self.img_shape)
+        label = Input(shape=self.label_shape)
 
         # Concatenate image and conditioning image by channels to produce input
         combined_imgs = Concatenate(axis=-1)([img_A, img_B])
 
         d1 = d_layer(combined_imgs, self.df, bn=False)
+        label2 = Flatten()(label)
+        label2 = RepeatVector(self.df*2 * self.df*2)(label2)
+        label2 = Reshape((self.df*2, self.df*2,self.n_attributes))(label2)
+        d1 = Concatenate(axis=-1)([d1, label2])
         d2 = d_layer(d1, self.df*2)
         d3 = d_layer(d2, self.df*4)
         d4 = d_layer(d3, self.df*8)
 
         validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
 
-        return Model([img_A, img_B], validity)
+        return Model([img_A, label, img_B], validity)
 
     def train(self, epochs, batch_size=1, sample_interval=50):
 
@@ -140,37 +153,46 @@ class FaceGenerator():
         # Adversarial loss ground truths
         valid = np.ones((batch_size,) + self.disc_patch)
         fake = np.zeros((batch_size,) + self.disc_patch)
+        label_fake = np.ones((batch_size,) + self.disc_patch) * 0.5
 
         for epoch in range(epochs):
-            for batch_i, (imgs_A, imgs_B) in enumerate(self.data_loader.load_batch(batch_size)):
+            for batch_i, (imgs_A, labels, imgs_B) in enumerate(self.data_loader.load_batch(batch_size)):
 
                 # ---------------------
                 #  Train Discriminator
                 # ---------------------
 
                 # Condition on B and generate a translated version
-                fake_A = self.generator.predict(imgs_B)
+                fake_A = self.generator.predict([imgs_B, labels])
 
                 # Train the discriminators (original images = real / generated = Fake)
-                d_loss_real = self.discriminator.train_on_batch([imgs_A, imgs_B], valid)
-                d_loss_fake = self.discriminator.train_on_batch([fake_A, imgs_B], fake)
-                d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+                d_loss_real = self.discriminator.train_on_batch([imgs_A, labels, imgs_B], valid)
+                d_loss_label = self.discriminator.train_on_batch([imgs_A, labels*(-1), imgs_B], label_fake)
+                d_loss_fake = self.discriminator.train_on_batch([fake_A, labels, imgs_B], fake)
+                d_loss = np.add(np.add(d_loss_real, d_loss_label), d_loss_fake) / 3
 
                 # -----------------
                 #  Train Generator
                 # -----------------
 
                 # Train the generators
-                g_loss = self.combined.train_on_batch([imgs_A, imgs_B], [valid, imgs_A])
+                g_loss = self.combined.train_on_batch([imgs_A, labels, imgs_B], [valid, imgs_A])
 
                 elapsed_time = datetime.datetime.now() - start_time
                 # Plot the progress
                 if batch_i % self.arg.summary_freq == 0:
                     print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %f] time: %s" % (epoch, epochs,
-                                                                            batch_i, self.data_loader.n_batches,
-                                                                            d_loss[0], 100*d_loss[1],
-                                                                            g_loss[0],
-                                                                            elapsed_time))
+                                                                        batch_i, self.data_loader.n_batches,
+                                                                        d_loss[0], 100*d_loss[1],
+                                                                        g_loss[0],
+                                                                        elapsed_time))
+                    log = open('log.txt', 'a')
+                    log.write("[Epoch {}/{}] [Batch {}/{}] [D loss: {:.4f}, acc: {:.1f}%%] [G loss: {:.2f}] time: {}\n".format(epoch, epochs,
+                                                                        batch_i, self.data_loader.n_batches,
+                                                                        d_loss[0], 100*d_loss[1],
+                                                                        g_loss[0],
+                                                                        elapsed_time))
+                    log.close()
 
                 # If at save interval => save generated image samples
                 if batch_i % sample_interval == 0:
@@ -184,22 +206,24 @@ class FaceGenerator():
         os.makedirs(self.arg.sample_dir, exist_ok=True)
         r, c = 3, 3
 
-        imgs_A, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
-        fake_A = self.generator.predict(imgs_B)
+        imgs_A, labels, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
+        fake_A = self.generator.predict([imgs_B, labels])
 
         gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
+        des = self.data_loader.attributes
 
-        titles = ['Condition', 'Generated', 'Original']
         fig, axs = plt.subplots(r, c)
         cnt = 0
         for i in range(r):
             for j in range(c):
+                l = des[0] + '=' + str(labels[j][0][0][0]) + '\n' + des[1] + '=' + str(labels[j][0][0][1])
+                titles = ['Condition\n' + l, 'Generated', 'Original']
                 axs[i,j].imshow(gen_imgs[cnt])
                 axs[i, j].set_title(titles[i])
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.savefig("images/%d_%d.png" % (epoch, batch_i))
+        fig.savefig(self.arg.sample_dir+"images/%d_%d.png" % (epoch, batch_i))
         plt.close()
