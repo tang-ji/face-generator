@@ -11,7 +11,7 @@ parser.add_argument("--max_epochs", type=int, default=10, help="number of traini
 parser.add_argument("--summary_freq", type=int, default=1, help="update summaries every summary_freq batches")
 parser.add_argument("--sample_freq", type=int, default=200, help="output samples every sample_freq batches")
 parser.add_argument("--sample_dir", default='samples/', default=200, help="where to put output samples")
-parser.add_argument("--save_freq", type=int, default=5000, help="save model every save_freq steps, 0 to disable")
+parser.add_argument("--save_freq", type=int, default=1000, help="save model every save_freq steps, 0 to disable")
 
 parser.add_argument("--batch_size", type=int, default=1, help="number of images in batch")
 parser.add_argument("--ngf", type=int, default=64, help="number of generator filters in first conv layer")
