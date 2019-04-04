@@ -201,5 +201,5 @@ class FaceGenerator():
                 axs[i, j].set_title(titles[i])
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.savefig("images/%d_%d.png" % (epoch, batch_i))
+        fig.savefig(self.arg.sample_dir+"%d_%d.png" % (epoch, batch_i))
         plt.close()
