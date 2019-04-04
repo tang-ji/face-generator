@@ -7,6 +7,8 @@ Based on [pix2pix](https://phillipi.github.io/pix2pix/) by Isola et al.
 
 Keras implementation of pix2pix and ICGAN(https://arxiv.org/abs/1611.06355).
 
+Here is a demo of HTML: <a href="http://jitang.info">jitang.info</a>
+
 ## Setup
 
 
